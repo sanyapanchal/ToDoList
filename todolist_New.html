@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous" />
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js" integrity="sha384-IQsoLXl5PILFhosVNubq5LC7Qb9DXgDA9i+tQ8Zj3iwWAwPtgFTxbJ8NT4GN1R8p" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.min.js" integrity="sha384-cVKIPhGWiC2Al4u+LWgxfKTRIcfu0JTxR+EQDz/bgldoEyl4H0zUF0QKbrJ0EcQF" crossorigin="anonymous"></script>
+  <style>
+    body {
+      font-family: "Arial", sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      background-color: BLACK; /* Bootstrap light gray background color */
+    }
+
+    .container {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-evenly;
+      margin-top: 20px;
+    }
+
+    .card {
+      width: 300px;
+      margin: 10px;
+      padding: 20px;
+      border: 1px solid #6c757d;
+      border-radius: 10px;
+      background-color: #ffffff;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .task-list {
+      list-style: none;
+      padding: 0;
+    }
+
+    .task {
+      display: flex;
+      justify-content: space-between;
+      margin: 10px 0;
+      padding: 10px;
+      border: 1px solid #d6d8db;
+      border-radius: 5px;
+      background-color: #ffffff;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .btn-secondary {
+      margin-top: 10px;
+    }
+
+    .dragging {
+      opacity: 0.5;
+    }
+  </style>
+  <title>Task Manager</title>
+</head>
+<body>
+
+  <h1 class="my-5" style="color: white;">Your TO-DO List</h1>
+  <div class="container" id="cardContainer">
+    <!-- Existing Cards -->
+  </div>
+
+  <button class="btn btn-secondary my-5" onclick="addNewCard()">Add Card</button>
+
+  <script>
+    const cards = JSON.parse(localStorage.getItem('cards')) || [];
+    let draggedItem = null;
+
+    document.addEventListener('DOMContentLoaded', function () {
+      loadCards();
+    });
+
+    function addNewCard() {
+      const cardName = prompt('Enter the name for the new card:');
+      if (cardName !== null && cardName.trim() !== '') {
+        const card = {
+          id: cards.length + 1,
+          name: cardName,
+          tasks: [],
+        };
+
+        cards.push(card);
+        updateLocalStorage();
+        createCard(card);
+      }
+    }
+
+    function createCard(card) {
+      const cardContainer = document.getElementById('cardContainer');
+      const newCard = document.createElement('div');
+      newCard.className = 'card';
+      newCard.innerHTML = `
+        <h2>${card.name}</h2>
+        <ul class="task-list" id="taskList-${card.id}" ondragover="allowDrop(event)" ondrop="drop(event, ${card.id})"></ul>
+        <button class="btn btn-info" onclick="addTask(${card.id})">Add Task</button>
+        <button class="btn btn-warning" onclick="editCard(${card.id})">Edit Card</button>
+        <button class="btn btn-danger" onclick="deleteCard(${card.id})">Delete Card</button>
+      `;
+      cardContainer.appendChild(newCard);
+      loadTasks(card);
+    }
+
+    function addTask(cardId) {
+      const taskText = prompt(`Enter new task for card ${cardId}:`);
+      if (taskText !== null && taskText.trim() !== '') {
+        const card = cards.find(c => c.id === cardId);
+        if (card) {
+          card.tasks.push(taskText);
+          updateLocalStorage();
+          loadTasks(card);
+        }
+      }
+    }
+
+    function loadTasks(card) {
+      const taskList = document.getElementById(`taskList-${card.id}`);
+      taskList.innerHTML = '';
+      card.tasks.forEach((taskText, index) => {
+        const taskItem = document.createElement('li');
+        taskItem.className = 'task';
+        taskItem.draggable = true;
+        taskItem.setAttribute('ondragstart', `drag(event, ${card.id}, ${index})`);
+        taskItem.innerHTML = `
+          <span>${taskText}</span>
+          <button class="btn btn-warning" onclick="editTask(${card.id}, ${index})">Edit</button>
+          <button class="btn btn-danger" onclick="deleteTask(${card.id}, ${index})">Delete</button>
+        `;
+        taskList.appendChild(taskItem);
+      });
+    }
+
+    function editTask(cardId, taskIndex) {
+      const card = cards.find(c => c.id === cardId);
+      if (card) {
+        const newTaskText = prompt('Enter updated task:');
+        if (newTaskText !== null && newTaskText.trim() !== '') {
+          card.tasks[taskIndex] = newTaskText;
+          updateLocalStorage();
+          loadTasks(card);
+        }
+      }
+    }
+
+    function editCard(cardId) {
+      const card = cards.find(c => c.id === cardId);
+      if (card) {
+        const newName = prompt('Enter the new name for the card:');
+        if (newName !== null && newName.trim() !== '') {
+          card.name = newName;
+          updateLocalStorage();
+          loadCards();
+        }
+      }
+    }
+
+    function deleteCard(cardId) {
+      const cardIndex = cards.findIndex(c => c.id === cardId);
+      if (cardIndex !== -1) {
+        cards.splice(cardIndex, 1);
+        updateLocalStorage();
+        loadCards();
+      }
+    }
+
+    function deleteTask(cardId, taskIndex) {
+      const card = cards.find(c => c.id === cardId);
+      if (card) {
+        card.tasks.splice(taskIndex, 1);
+        updateLocalStorage();
+        loadTasks(card);
+      }
+    }
+
+    function updateLocalStorage() {
+      localStorage.setItem('cards', JSON.stringify(cards));
+    }
+
+    function loadCards() {
+      const cardContainer = document.getElementById('cardContainer');
+      cardContainer.innerHTML = '';
+      cards.forEach((card) => {
+        createCard(card);
+      });
+    }
+
+    function allowDrop(event) {
+      event.preventDefault();
+    }
+
+    function drag(event, cardId, taskIndex) {
+      draggedItem = { cardId, taskIndex };
+      event.target.classList.add('dragging');
+    }
+
+    function drop(event, targetCardId) {
+      event.preventDefault();
+      const targetCard = cards.find(c => c.id === targetCardId);
+      if (targetCard && draggedItem) {
+        const { cardId: sourceCardId, taskIndex: sourceTaskIndex } = draggedItem;
+        const sourceCard = cards.find(c => c.id === sourceCardId);
+
+        if (sourceCard && sourceTaskIndex !== undefined) {
+          const draggedTask = sourceCard.tasks[sourceTaskIndex];
+
+          // Remove from source card
+          sourceCard.tasks.splice(sourceTaskIndex, 1);
+
+          // Add to target card
+          targetCard.tasks.push(draggedTask);
+
+          // Clear draggedItem
+          draggedItem = null;
+
+          // Update UI
+          updateLocalStorage();
+          loadTasks(sourceCard);
+          loadTasks(targetCard);
+        }
+      }
+    }
+  </script>
+
+</body>
+</html>
